@@ -1,0 +1,62 @@
+name: Preview Rsync Deploy
+description: Upload preview build files to a Selflify server and mark the deployed commit.
+
+inputs:
+  ssh-private-key:
+    required: true
+    description: SSH private key used to access the preview server.
+  preview-server-host:
+    required: true
+    description: Preview server hostname or IP.
+  preview-ssh-user:
+    required: false
+    description: SSH user used to access the preview server.
+    default: root
+  preview-root-dir:
+    required: false
+    description: Root directory for preview files on the server.
+    default: /var/www
+  site:
+    required: true
+    description: Site name or subdomain managed by Selflify.
+  path-name:
+    required: true
+    description: Preview path name.
+  output:
+    required: true
+    description: Local build output directory.
+
+runs:
+  using: composite
+  steps:
+    - name: Setup SSH
+      shell: bash
+      run: |
+        mkdir -p ~/.ssh
+        printf '%s\n' "${{ inputs.ssh-private-key }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H "${{ inputs.preview-server-host }}" >> ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+
+    - name: Prepare remote directory
+      shell: bash
+      run: |
+        remote_site_dir="${{ inputs.preview-root-dir }}/${{ inputs.site }}/${{ inputs.path-name }}"
+
+        ssh "${{ inputs.preview-ssh-user }}@${{ inputs.preview-server-host }}" \
+          "mkdir -p \"$remote_site_dir\""
+
+    - name: Deploy via rsync
+      shell: bash
+      run: |
+        rsync -avz --delete \
+          "${{ inputs.output }}/" \
+          "${{ inputs.preview-ssh-user }}@${{ inputs.preview-server-host }}:${{ inputs.preview-root-dir }}/${{ inputs.site }}/${{ inputs.path-name }}/"
+
+    - name: Mark deployed commit
+      shell: bash
+      run: |
+        remote_site_dir="${{ inputs.preview-root-dir }}/${{ inputs.site }}/${{ inputs.path-name }}"
+
+        ssh "${{ inputs.preview-ssh-user }}@${{ inputs.preview-server-host }}" \
+          "rm -rf \"$remote_site_dir/__preview_commit__\" && mkdir -p \"$remote_site_dir/__preview_commit__\" && touch \"$remote_site_dir/__preview_commit__/$GITHUB_SHA\""
