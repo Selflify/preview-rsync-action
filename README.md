@@ -21,17 +21,3 @@ Upload a built site directory to a Selflify preview server over SSH and `rsync`.
     path-name: pr-42
     output: dist
 ```
-
-## Marketplace-style repository layout
-
-- `action.yml` exposes the composite action
-- `README.md` is the public usage page
-- `LICENSE` keeps the repo ready for public publishing
-- `v1` is the stable ref workflows should pin to
-
-## Publishing flow
-
-1. push the repository updates
-2. create or move the `v1` tag
-3. optionally create a GitHub Release
-4. publish the repo from the GitHub Marketplace UI if you want a Marketplace listing
